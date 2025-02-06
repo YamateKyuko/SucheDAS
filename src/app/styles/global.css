@@ -1,0 +1,108 @@
+/* @media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1E2022;
+    color: #ddd;
+  }
+}; */
+
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+main {
+  padding: 0.5rem;
+  & article {
+    > section {
+      position: relative;
+      margin-bottom: 1rem;
+      &:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -0.5rem;
+        height: 100%;
+        width: calc(100% + 1rem);
+        border-bottom: 0.0625rem solid black;
+        box-shadow: 0 0.25rem 0.25rem 0rem #00000088;
+      }
+      > h1 {
+        /* text-align: center; */
+        font-size: 1.5rem;
+        /* text-indent: 3rem; */
+        line-height: 2rem;
+        /* &:before {
+          position: absolute;
+          content: '';
+          top: 0.25rem;
+          left: 0rem;
+          width: 2.5rem;
+          height: 1.5rem;
+          border-radius: 0.25rem;
+          border: 0.0625rem solid black;
+          box-sizing: border-box;
+          text-align: center;
+          text-indent: 0;
+        } */
+      }
+    }
+    /* > h1 {
+      position: relative;
+      font-size: 1.5rem;
+      line-height: 2rem;
+      margin: 0 0 0.5rem 0;
+      text-indent: 2.5rem;
+      &:before {
+        position: absolute;
+        content: '';
+        left: 0rem;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        border: 0.0625rem solid black;
+        box-sizing: border-box;
+        box-shadow: 0 0.25rem 0.25rem 0rem #00000088;
+        text-align: center;
+        text-indent: 0;
+      }
+    } */
+    /* overflow: visible; */
+    > ul {
+      > li {
+        position: relative;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        border: 0.0625rem solid black;
+        margin-bottom: 0.5rem;
+        text-decoration: none;
+        box-sizing: border-box;
+        background-color: #fff;
+        box-shadow: 0 0.25rem 0.25rem 0rem #00000088;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: 0.3s;
+        background-color: #ffffff;
+        padding: calc(0.25rem - 0.0625rem) calc(0.25rem - 0.0625rem) calc(0.25rem - 0.0625rem) calc(3rem - 0.0625rem);
+        &:hover {
+          background-color: #ddd;
+          box-shadow: 0 0.125rem 0.25rem 0rem #00000088;
+        }
+        > a {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        }
+      }
+    }
+  } 
+}
+
+ul {
+  display: block;
+  & li {
+    display: block;
+  }
+}

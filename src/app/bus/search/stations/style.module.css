@@ -1,0 +1,12 @@
+.station {
+  position: relative;
+  box-sizeing: border-box;
+  display: block;
+  text-decoration: none;
+  transition: 0.3s;
+  & h2 {
+    margin: 0;
+    line-height: 2rem;
+    font-size: 1.5rem;
+  }
+}
