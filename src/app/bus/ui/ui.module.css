@@ -97,3 +97,31 @@
   font-weight: normal;
   /* display: inline-block; */
 }
+
+body:has(.maplibreglmap) {
+  overflow: hidden;
+  & main {
+    padding: 0;
+    width: calc(100%);
+    height: calc(100vh - 5rem);
+    & article {
+      & section {
+        padding: 0 0.5rem;
+        margin: 0;
+        z-index: 1;
+        &:before {
+          left: 0;
+          width: 100%;
+        }
+      }
+      padding: 0;
+      margin: 0;
+      height: calc(100vh - 8rem);
+      & .maplibreglmap {
+        width: 100%;
+        height: calc(100% + 1rem);
+      }
+    }
+  }
+  
+}

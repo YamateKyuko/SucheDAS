@@ -1,7 +1,11 @@
+'use client';
 import { useEffect, useRef } from 'react';
 import maplibregl, { ExpressionSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { FeatureCollection } from 'geojson';
+import { Point } from 'geojson';
+import { MapHandlerType } from '../../../ui/map';
+import { VPdataType } from './VPmap';
+// import { handleSearchDefine } from '../ui/map';
 
 const zoomInterpolate = (coefficient: number): ExpressionSpecification => [
   "interpolate",
@@ -12,8 +16,20 @@ const zoomInterpolate = (coefficient: number): ExpressionSpecification => [
   16, coefficient
 ];
 
-export default function useVehicleMapController(geojson: FeatureCollection) {
-  const mapContainer = useRef<HTMLDivElement | null>(null);
+export default function useVPmapController(props: {
+  VPdata: VPdataType,
+  mapHandlerRef?: React.RefObject<MapHandlerType | null>,
+}) {
+
+  const {
+    mapHandlerRef,
+    VPdata: {
+      featureCollection: geojson,
+      imgs,
+      selected
+    }
+  } = props;
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
   useEffect(() => {
@@ -23,26 +39,26 @@ export default function useVehicleMapController(geojson: FeatureCollection) {
       return;
     }
 
-    if (mapRef.current || !mapContainer.current) return;
+    if (mapRef.current || !mapContainerRef.current) return;
+
+    console.log(selected);
+
+    const selectedCoords = selected?.coordinates;
 
     mapRef.current = new maplibregl.Map({
-      container: mapContainer.current,
+      container: mapContainerRef.current,
       style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
-      center: [139.45, 35.65],
-      zoom: 12,
+      center: selectedCoords || [139.45, 35.65],
+      zoom: 18,
       minZoom: 10,
       maxZoom: 17.99,
       maxBounds: [[120, 15], [155, 50]],
     });
 
     mapRef.current.on('load', async () => {
+      console.log('map load');
       const map = mapRef.current;
       if (!map) return;
-
-      const otherimg = await map.loadImage('/RTother.png');
-      const keiobusimg = await map.loadImage('/RTKeioBus.png');
-      const kantobusimg = await map.loadImage('/RTKantoBus.png');
-      const toeibusimg = await map.loadImage('/RTToeiBus.png');
 
       map
         .addControl(new maplibregl.NavigationControl(), 'bottom-right')
@@ -50,12 +66,11 @@ export default function useVehicleMapController(geojson: FeatureCollection) {
         .addControl(new maplibregl.ScaleControl() )
         .addControl(new maplibregl.FullscreenControl() )
         .addControl(new maplibregl.GlobeControl() );
-        // .addControl(new maplibregl.AttributionControl({compact: true}));
 
-      map.addImage('RTother', otherimg.data);
-      map.addImage('RTKeioBus', keiobusimg.data);
-      map.addImage('RTKantoBus', kantobusimg.data);
-      map.addImage('RTToeiBus', toeibusimg.data);
+      imgs?.forEach(async ({path: imgPath, name: imgName}) => {
+        const mapImg = await map.loadImage(imgPath);
+        map.addImage(imgName, mapImg.data);
+      });
 
       map.addSource('geojson-source', {
         type: 'geojson',
@@ -85,7 +100,7 @@ export default function useVehicleMapController(geojson: FeatureCollection) {
       });
 
       map.addLayer({
-        id: 'cluster-count',
+        id: 'cluster-symbol',
         type: 'symbol',
         source: 'geojson-source',
         filter: ['has', 'point_count'],
@@ -99,7 +114,7 @@ export default function useVehicleMapController(geojson: FeatureCollection) {
       });
 
       map.addLayer({
-        id: '3d-symbol-layer',
+        id: 'vehicle-symbol',
         type: 'symbol',
         source: 'geojson-source',
         filter: ['!', ['has', 'point_count']],
@@ -134,56 +149,91 @@ export default function useVehicleMapController(geojson: FeatureCollection) {
       // });
     });
 
-    mapRef.current.on('click', 'cluster-count', async (e: maplibregl.MapMouseEvent) => {
+    mapRef.current.on('click', async (e: maplibregl.MapMouseEvent) => {
       const map = mapRef.current;
       if (!map) return;
 
-      const coordinates = e.lngLat;
       const popup = new maplibregl.Popup();
+      const popuper = (coords: [number, number], html: string) => {
+        popup
+          .setLngLat(coords)
+          .setHTML(html)
+          .addTo(map);
+      }
 
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: ['cluster-count']
-      });
-      const clusterId = features[0].properties.cluster_id;
-      const source = map.getSource<maplibregl.GeoJSONSource>('geojson-source');
-      if (!source) return;
+      // console.log(e);
+      const feature = map.queryRenderedFeatures(e.point, {
+        layers: ['vehicle-symbol', 'cluster-symbol']
+      })[0];
+      if (!feature) {
+        mapHandlerRef?.current?.setPathName(
+          ['mode', null],
+          ['vehicle_id', null]
+        );
+        return;
+      };
 
-      const maxGetLeave = 20;
+      const geom = feature.geometry as Point;
+      // console.log('geom:', geom)
+      // console.log(feature);
 
-      const leaves = await source.getClusterLeaves(clusterId, maxGetLeave, 0);
+      switch (feature.layer.id) {
 
-      // const zoom = await source.getClusterExpansionZoom(clusterId);
-      // const geom = features[0].geometry as Point;
-      // const coord = geom.coordinates;
-      // console.log(coord)
+        // バス
+        case 'vehicle-symbol': {
+          map.easeTo({
+            center: geom.coordinates as [number, number],
+            duration: 500,
+            zoom: 18
+          });
+          popuper(geom.coordinates as [number, number], (`
+            <div>${feature.properties.description}</div>
+          `));
+          const {vehicle_id} = feature.properties;
+          if (!vehicle_id) return;
+          mapHandlerRef?.current?.setPathName(
+            ['mode', 'vehicle'],
+            ['vehicle_id', vehicle_id]
+          );
+          break;
+        }
 
-      // map.easeTo({
-      //   center: coordinates,
-      //   zoom
-      // });
+        // クラスター
+        case 'cluster-symbol': {
+          console.log('cluster');
+          const clusterId = feature.properties.cluster_id;
+          const source = map.getSource<maplibregl.GeoJSONSource>('geojson-source');
+          if (!source) return;
+          const maxGetLeave = 20;
+          const leaves = await source.getClusterLeaves(clusterId, maxGetLeave, 0);
+          popuper(geom.coordinates as [number, number], (`
+              <ul>
+                ${leaves.map((v, i) => `
+                  <li key=${i}>
+                    ${
+                    i == maxGetLeave - 1 ? '...' : v.properties?.description || ''
+                  }
+                </li>
+              `).join('')}
+            </ul>
+          `));
 
-      console.log(leaves);
-
-      popup
-        .setLngLat(coordinates)
-        .setHTML(`
-          <ul>
-            ${leaves.map((v, i) => `
-              <li key=${i}>
-                ${
-                  i == maxGetLeave - 1 ? '...' : v.properties?.description || ''
-                }
-              </li>
-            `).join('')}
-          </ul>
-        `)
-        .addTo(map);
+          mapHandlerRef?.current?.setPathName(
+            ['mode', 'cluster'],
+            ['vehicle_id', leaves.map(v => v.properties?.vehicle_id).join('____')]
+          );
+          break;
+        }
+      }
     });
 
     if (!mapRef.current) return;
-  }, [geojson]);
+  }, [mapHandlerRef, geojson, imgs, selected]);
+
+  // const handleSearch = () => {}
 
   return {
-    mapContainer: mapContainer,
+    mapContainerRef,
+    // handleSearch
   }
 }

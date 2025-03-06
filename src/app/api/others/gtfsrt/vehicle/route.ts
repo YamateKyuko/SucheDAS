@@ -3,6 +3,7 @@ import { authenticate, queryParam } from "@/app/api/common/auth";
 import { getFailResponse, getGetFailResponse, getRTvehicleRequest, getRTvehicleResponse, getRTvehicleResponseEntity, isRequest } from "@/app/api/common/types";
 import { getRT } from "./get";
 import { providerList } from "@/app/api/common/RTproviderList";
+import { FeatureCollection } from "geojson";
 
 const from = '/bus/lib/request/gtfsrt/vehicle/';
 const endpoint = '/api/others/gtfsrt/vehicle/';
@@ -10,14 +11,20 @@ const endpoint = '/api/others/gtfsrt/vehicle/';
 type dataVal = {
   lastFetchTime: number,
   cache: Map<string, getRTvehicleResponseEntity> | null,
+  geojson: FeatureCollection | null,
   props: {
     name: string,
     textColor: string,
   }
 };
-const dataValInit: dataVal = { lastFetchTime: 0, cache: null, props: {name: '', textColor: ''} };
+const dataValInit: dataVal = {
+  lastFetchTime: 0,
+  cache: null,
+  geojson: null,
+  props: {name: '', textColor: ''}
+};
 
-const data: Map<getRTvehicleRequest['provider'], dataVal> = new Map([
+export const VPdataObject: Map<getRTvehicleRequest['provider'], dataVal> = new Map([
   ['KeioBus', dataValInit],
   ['ToeiBus', dataValInit],
   ['KantoBus', dataValInit],
@@ -30,13 +37,13 @@ export async function GET(request: Request) {
   return await authenticate(request, getRTvehicle);
 };
 
-async function getRTvehicle(params: queryParam): Promise<NextResponse<getRTvehicleResponse | getFailResponse>> {
+export async function getRTvehicle(params: queryParam): Promise<NextResponse<getRTvehicleResponse | getFailResponse>> {
   if (!isRequest<getRTvehicleRequest>(params, from)) return NextResponse.json(getGetFailResponse('no query', 400), { status: 400 });
 
   const currentTime = Date.now();
 
   const provider = params.provider;
-  const datum = data.get(provider);
+  const datum = VPdataObject.get(provider);
   if (!datum) return NextResponse.json(getGetFailResponse('provider not found', 400), { status: 400 });
 
   if (
@@ -63,7 +70,12 @@ async function getRTvehicle(params: queryParam): Promise<NextResponse<getRTvehic
     response.forEach((entity) => {
       entitiesMap.set(entity.trip_id, entity);
     });
-    data.set(provider, { lastFetchTime: currentTime, cache: entitiesMap, props: {name: provObj.name, textColor: provObj.textColor} });
+    VPdataObject.set(provider, {
+      lastFetchTime: currentTime,
+      cache: entitiesMap,
+      geojson: null,
+      props: {name: provObj.name, textColor: provObj.textColor}
+    });
     return NextResponse.json({
       endpoint,
       type: 'res',

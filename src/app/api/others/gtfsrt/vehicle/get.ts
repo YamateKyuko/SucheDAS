@@ -18,14 +18,18 @@ export async function getRT(provObj: typeof providerList[keyof typeof providerLi
     const object = message.toObject();
 
     const descKey = provObj.vehicleNum;
-    return object.entityList.map((entity) => convEntity(entity, descKey)).flat();
+    return object.entityList.map((entity, i) => convEntity(entity, i, descKey)).flat();
   } catch (error) {
     console.error(error);
     return null;
   }
 }
 
-function convEntity(entity: gtfsRealtime.FeedEntity.AsObject, descKey: typeof providerList[keyof typeof providerList]['vehicleNum']): getRTvehicleResponseEntity | [] {
+function convEntity(
+  entity: gtfsRealtime.FeedEntity.AsObject,
+  entity_index: number,
+  descKey: typeof providerList[keyof typeof providerList]['vehicleNum']
+): getRTvehicleResponseEntity | [] {
   const getCoo = (entity: gtfsRealtime.Position.AsObject | undefined): [number, number] | null => {
     if (!entity) return null;
     if (!entity.latitude || !entity.longitude) return null;
@@ -33,10 +37,11 @@ function convEntity(entity: gtfsRealtime.FeedEntity.AsObject, descKey: typeof pr
   }
   const conv = <T>(val: T) => val == undefined ? null : val;
   if (
+    entity.id == undefined ||
     entity.vehicle?.trip?.tripId == undefined
   ) return [];
   const obj = {
-    id: conv(entity.id),
+    id: entity.id,
     isDeleted: conv(entity.isDeleted),
     trip_id: entity.vehicle?.trip?.tripId,
     schedule_relationship: conv(entity.vehicle?.trip?.scheduleRelationship),
@@ -49,7 +54,9 @@ function convEntity(entity: gtfsRealtime.FeedEntity.AsObject, descKey: typeof pr
     stop_sequence: conv(entity.vehicle?.currentStopSequence),
     stop_id: conv(entity.vehicle?.stopId),
     status: conv(entity.vehicle?.currentStatus),
-    timestamp: conv(entity.vehicle?.timestamp)
+    timestamp: conv(entity.vehicle?.timestamp),
+    
+    entity_id: `${entity.id}_${entity_index}`,
   };
 
   const descGetter = () => {

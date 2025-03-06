@@ -1,3 +1,5 @@
+import 'server-only';
+
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { getRequest, getResponse, isResponse } from '../api/common/types';

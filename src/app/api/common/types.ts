@@ -113,10 +113,8 @@ export interface getPatternsResponse extends getResponse {
   pattern_id: number,
   agency_id: string,
   route_id: string,
-  route_long_name: string | null,
-  route_short_name: string | null,
+  route_name: string,
   direction_id: string | null,
-  pattern_count: number,
   stop_name: string,
   stop_id: string,
   station_id: number,
@@ -137,8 +135,7 @@ export interface getRoutesResponse extends getResponse {
   endpoint: '/api/db/tables/routes/',
   route_id: string,
   agency_id: string,
-  route_short_name: string | null,
-  route_long_name: string | null,
+  route_name: string,
   route_type: string | null,
 };
 
@@ -149,6 +146,20 @@ export interface getRTvehicleRequest extends getRequest {
 
 
 export interface getRTvehicleResponse extends getResponse {
+  endpoint: '/api/others/gtfsrt/vehicle/',
+  provider: getRTvehiclePositionRequestProvider,
+  providerName: string,
+  textColor: string,
+  entities: [string, getRTvehicleResponseEntity][],
+};
+
+export interface getRTvehiclePositionRequest extends getRequest {
+  from: '/bus/lib/request/gtfsrt/vehicle/',
+  provider: getRTvehiclePositionRequestProvider,
+  responseType: 'geojson'
+};
+
+export interface getRTvehiclePositionResponse extends getResponse {
   endpoint: '/api/others/gtfsrt/vehicle/',
   provider: getRTvehiclePositionRequestProvider,
   providerName: string,

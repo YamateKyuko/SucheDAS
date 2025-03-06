@@ -11,7 +11,7 @@ type temp_fileData = {
 interface ParsedData {
   [key: string]: string | undefined;
 }
-// const needfiles: ([string] | [string, string])[] = [['agency', 'agency_jp'], ['routes'], ['calendar', 'calendar_dates'], ];
+// const needfiles: ([string] | [string, string])[] = [['translations']];
 const needfiles: ([string] | [string, string])[] = [['agency', 'agency_jp'], ['routes'], ['calendar', 'calendar_dates'], ['trips'], ['stops'], ['stop_times']];
 export async function GET(request: Request) {
   return authenticate(request, insertGTFS);
@@ -21,11 +21,11 @@ async function insertGTFS(params: queryParam): Promise<NextResponse> {
   try {
     const db = await ManageDatabase.init();
     
-    const { url: feedUrl, date } = params;
+    const { url: feedUrl } = params;
     if (!feedUrl) return missingError('feedUrl');
-    if (!date) return missingError('date');
+    // if (!date) return missingError('date');
 
-    const reader = await gtfsReader.init(feedUrl, date);
+    const reader = await gtfsReader.init(feedUrl);
 
     if (!reader) return missingError('reader');
 
@@ -44,13 +44,20 @@ async function insertGTFS(params: queryParam): Promise<NextResponse> {
 };
 
 async function inserter(transaction: Transaction, feedUrl: string, reader: gtfsReader) {
+
+
   const feedData = await getFileData(reader, ['feed_info']);
   const feedId = await feed(transaction, feedData, feedUrl)
   if (!feedId) return missingError('feedId');
+
+
   for (const fileNames of needfiles) {
     const fileSet = await getFileData(reader, fileNames);
     console.log('Load: ' + fileSet[0]?.name);
     switch (fileSet[0]?.name) {
+      // case 'translations':
+      //   await translations(transaction, fileSet, feedId);
+      //   break;
       case 'agency':
         await agency(transaction, fileSet, feedId);
         break;
@@ -82,6 +89,27 @@ async function inserter(transaction: Transaction, feedUrl: string, reader: gtfsR
 async function getFileData(reader: gtfsReader, fileName: [string] | [string, string]): Promise<temp_fileData[]> {
   return reader.get(fileName);
 };
+
+// async function translations(client: Transaction, files: temp_fileData[], feedId: number) {
+
+//   const translationsValue = files[0]?.value || [];
+
+//   const obj = {
+//     stop_name: {
+//       field_name: new Map<string, {val: string, lang: string}>(),
+//       field_value: new Map<string, {val: string, lang: string}>(),
+//     }
+//   }
+
+//   for (const translation of translationsValue) {
+//     switch (translation.table_name) {
+//       case 'stops':
+//         const isRecord = !!translation.record_id;
+//         if (translation.field_name != 'stop_name') break;
+        
+//     }
+//   };
+// };
 
 async function feed(client: Transaction, files: temp_fileData[], feedUrl: string): Promise<number | undefined> {
   const tbl = feedTable(client);
@@ -153,13 +181,15 @@ async function routes(client: Transaction, files: temp_fileData[], feedId: numbe
   if (!routesValue.length) return;
   console.log('Loading: routes');
   for (const route of routesValue) {
-    console.log('  : ' + route.route_short_name);
+    const route_name = route.route_short_name || route.route_long_name || route.route_id || '';
+    console.log('  : ' + route.route_name);
     let able = true;
     const a = () => able = false;
     const insertData: NeededParams<typeof tbl['insert']> = {
       feed_id: feedId,
       route_id: toStr(route.route_id, a),
       agency_id: toStr(route.agency_id, a),
+      route_name: route_name,
       route_short_name: Str(route.route_short_name),
       route_long_name: Str(route.route_long_name),
       route_desc: Str(route.route_desc),
@@ -265,6 +295,8 @@ async function trips (client: Transaction, files: temp_fileData[], feedId: numbe
       jp_trip_desc_symbol: Str(trip.jp_trip_desc_symbol),
       jp_office_id: Str(trip.jp_office_id),
       jp_trip_desc_detail: Str(trip.jp_trip_desc_detail),
+
+      pattern_id: null,
     };
     if (able) {await tbl.insert(insertData)}
     else console.log('--> Error: required data is missing.');
@@ -290,7 +322,8 @@ async function stops(client: Transaction, files: temp_fileData[], feedId: number
       zone_id: Str(stop.zone_id),
       stop_url: Str(stop.stop_url),
       location_type: Str(stop.location_type),
-      station_id: [toStr(stop.stop_name, a), `Point(${toNum(stop.stop_lon, a)} ${toNum(stop.stop_lat, a)})`],
+      station_id: null,
+      // station_id: [toStr(stop.stop_name, a), `Point(${toNum(stop.stop_lon, a)} ${toNum(stop.stop_lat, a)})`],
       parent_station: Str(stop.parent_station),
       stop_timezone: Str(stop.stop_timezone),
       wheelchair_boarding: Str(stop.wheelchair_boarding),

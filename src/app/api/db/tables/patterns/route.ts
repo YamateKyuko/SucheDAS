@@ -19,21 +19,19 @@ async function getPatterns(params: queryParam): Promise<NextResponse<getPatterns
     const res = await table.selectEqual(
       params.where,
       [
-        'feed_id',
-        'pattern_id',
-        'agency_id',
-        'route_id',
-        'route_long_name',
-        'route_short_name',
-        'direction_id',
-        'pattern_count',
-        'stop_name',
-        'stop_id',
-        'station_id',
-        'zone_id',
-        'stop_headsign',
-        'platform_code',
-        'stop_sequence'
+        // 'feed_id',
+        // 'pattern_id',
+        // 'agency_id',
+        // 'route_id',
+        // 'route_name',
+        // 'direction_id',
+        // 'stop_name',
+        // 'stop_id',
+        // 'station_id',
+        // 'zone_id',
+        // 'stop_headsign',
+        // 'platform_code',
+        // 'stop_sequence'
       ] as const
     );
     await db.release();

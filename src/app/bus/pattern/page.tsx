@@ -1,6 +1,6 @@
 import React from 'react'
 import { Suspense } from 'react'
-import { pageProps } from '@/app/bus/types';
+import { paramProps } from '@/app/bus/types';
 import StopsTable from '@/app/bus/pattern/stopsTable';
 import { getStrFromObj } from '@/app/lib/escape';
 import { getNum } from '@/app/api/common/vali';
@@ -9,7 +9,7 @@ import styles from './style.module.css'
 
 const paramName = 'pattern_id';
 
-export default async function Page(props: pageProps) {
+export default async function Page(props: paramProps) {
   const p = getStrFromObj(await props.searchParams, paramName);
   if (!p) return <article><h1>停留所を選択してください</h1></article>;
   const param = getNum(p[paramName], true);

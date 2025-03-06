@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { stopPatternsTable } from '@/app/api/db/sets/defines';
-// import { agencyTable, calendarTable, feedTable, routesTable, servicesTable, parentStationsTable, stopsTable, stopTimesTable, tripsTable, stopPatternsTable } from '@/app/api/db/sets/defines';
+// import { stopPatternsTable } from '@/app/api/db/sets/defines';
+import { agencyTable, calendarTable, feedTable, routesTable, servicesTable, parentStationsTable, stopsTable, stopTimesTable, tripsTable, stopPatternsTable, tripPatternsTable } from '@/app/api/db/sets/defines';
 import { ManageDatabase, Transaction } from '@/app/api/db/sets/connection';
 import { authenticate } from '../auth';
 
@@ -28,70 +28,63 @@ async function creater(client: Transaction) {
   await client.run(`
     grant select on all tables in schema public to reader;
   `);
+
   await client.run(`
-    
-    drop function if exists ud_getStationID(varchar(255), geometry('Point', 3857));
+    drop function if exists ud_to_second(varchar(8));
     create function
-    ud_getStationID(
-      varchar(255),
-      geometry('Point', 3857)
+    ud_to_second(
+      varchar(8)
     ) returns integer as $$
-      merge 
-        into parent_stations as t
-        using (values($1, $2)) as s(str, point)
-          on 
-            s.str = t.station_name and
-            ST_DWithin(s.point, t.station_bbox, 0.01) -- 1km
-        when matched then
-          update
-            set (
-              station_geom,
-              station_bbox
-            ) = (
-              select
-                ST_LineInterpolatePoint(diag, 0.5),
-                diag
-              from ST_BoundingDiagonal(ST_Collect(s.point, t.station_bbox)) as diag
-            )
-        when not matched then
-          insert (
-              station_name,
-              station_geom,
-              station_bbox
-            )
-            values (
-              s.str,
-              ST_LineInterpolatePoint(ST_BoundingDiagonal(s.point), 0.5),
-              ST_BoundingDiagonal(s.point)
-            )
-        returning t.station_id
-      ;
+    SELECT (
+      split_part($1, ':', 1)::smallint * 3600 +
+      split_part($1, ':', 2)::smallint * 60 +
+      split_part($1, ':', 3)::smallint 
+    )::integer
     $$ language sql;
   `);
-  // await client.query(`
-  //   -- create extension if not exists postgis;
-  //   drop type if exists ud_01 cascade;
-  //   create type ud_01 as enum ('0', '1');
-  //   drop type if exists ud_012 cascade;
-  //   create type ud_02 as enum ('0', '1', '2');
-  //   drop type if exists ud_0123 cascade;
-  //   create type ud_03 as enum ('0', '1', '2', '3');
-  //   drop type if exists ud_route_type cascade;
-  //   create type ud_route_type as enum ('0', '1', '2', '3', '4', '5', '6', '7');
-  // `);
 
+  await client.run(`
+    drop function if exists ud_to_day(date);
+    create function ud_to_day(date)
+    returns varchar(3) as $$
+      SELECT
+        (array['日','月','火','水','木','金','土'])[EXTRACT(DOW FROM CAST($1 AS DATE)) + 1]
+    $$ language sql;
+  `);
+  await client.run(`
+    drop function if exists ud_is_holiday(date);
+    create function ud_is_holiday(date) returns bool as $$
+      select 
+        holiday_name is not null
+      from holidays
+      where holiday_date = $1
+      limit 1;
+    $$ language sql;
+  `);
+  await client.run(`
+    drop function if exists ud_to_daytype(date);
+    create function ud_to_daytype(date) returns varchar(2) as $$
+    select
+      case ud_is_holiday($1)
+        when true then '祝'
+        else case ud_to_day($1) 
+          when '日' then '日'
+          when '土' then '土'
+          else '平'
+        end
+      end;
+    $$ language sql;
+  `);
 
-
-
-
-  // await feedTable(client).create();
-  // await agencyTable(client).create();
-  // await routesTable(client).create();
-  // await servicesTable(client).create();
-  // await calendarTable(client).create();
-  // await tripsTable(client).create();
-  // await parentStationsTable(client).create();
-  // await stopsTable(client).create();
-  // await stopTimesTable(client).create();
+  await feedTable(client).create();
+  await agencyTable(client).create();
+  await routesTable(client).create();
+  await servicesTable(client).create();
+  await calendarTable(client).create();
+  await tripPatternsTable(client).create();
+  await tripsTable(client).create();
+  await parentStationsTable(client).create();
+  await stopsTable(client).create();
+  await stopTimesTable(client).create();
   await stopPatternsTable(client).create();
 };

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Suspense } from 'react'
-import { pageProps } from '@/app/bus/types';
+import { paramProps } from '@/app/bus/types';
 import StopsTable from '@/app/bus/station/stopsTable';
 import { getNum } from '@/app/api/common/vali';
 import StationName from './stationName';
@@ -8,7 +8,7 @@ import { getStrFromObj } from '@/app/lib/escape';
 
 const paramName = 'station_id';
 
-export default async function Page(props: pageProps) {
+export default async function Page(props: paramProps) {
   const p = getStrFromObj(await props.searchParams, paramName);
   if (!p) return <article><h1>パラメータがありません</h1></article>;
   const param = getNum(p[paramName], true);

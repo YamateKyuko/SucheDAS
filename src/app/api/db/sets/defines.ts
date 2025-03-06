@@ -19,7 +19,6 @@ export function feedTable(client: Database | ManageDatabase | Transaction) {
       primary key (feed_id)
     `,
     query: `create index if not exists ix_feed_feed_id on feed(feed_id);`,
-    // placeHolders: { feed_id: (): 'default' => 'default' },
   }, client);
 }
 
@@ -58,6 +57,7 @@ export function routesTable(client: Database | ManageDatabase | Transaction) {
       feed_id: 'integer',
       route_id: 'varchar(255) not null',
       agency_id: 'varchar(255) not null',
+      route_name: 'varchar(255)',
       route_short_name: 'varchar(63)',
       route_long_name: 'varchar(255)',
       route_desc: 'varchar(255)',
@@ -83,6 +83,15 @@ export function servicesTable(client: Database | ManageDatabase | Transaction) {
     name: 'services',
     define: {
       feed_id: 'integer',
+      // monday: 'ud_01',
+      // tuesday: 'ud_01',
+      // wednesday: 'ud_01',
+      // thursday: 'ud_01',
+      // friday: 'ud_01',
+      // saturday: 'ud_01',
+      // sunday: 'ud_01',
+      // start_date: 'date',
+      // end_date: 'date',
       service_id: 'varchar(255)',
     },
     constraint: `
@@ -109,6 +118,27 @@ export function calendarTable(client: Database | ManageDatabase | Transaction) {
   }, client);
 };
 
+export function tripPatternsTable(client: Database | ManageDatabase | Transaction) {
+  return new table({
+    name: 'trip_patterns',
+    define: {
+      feed_id: 'integer',
+      pattern_id: 'integer not null',
+      route_type: 'ud_route_type not null',
+      route_id: 'varchar(255)',
+      agency_id: 'varchar(255)',
+      direction_id: 'ud_01',
+      route_name: 'varchar(255) not null',
+      stop_list: 'varchar(255)[]',
+      headsign_list: 'varchar(255)[]',
+    },
+    constraint: `
+      primary key (feed_id, pattern_id)
+    `,
+    query: `create index if not exists ix_trip_patterns_pattern_id on trips(feed_id, pattern_id);`,
+  }, client);
+};
+
 export function tripsTable(client: Database | ManageDatabase | Transaction) {
   return new table({
     name: 'trips',
@@ -128,6 +158,8 @@ export function tripsTable(client: Database | ManageDatabase | Transaction) {
       jp_trip_desc_symbol: 'varchar(255)',
       jp_office_id: 'varchar(255)',
       jp_trip_desc_detail: 'varchar(255)',
+
+      pattern_id: 'integer',
     },
     constraint: `
       primary key (feed_id, trip_id),
@@ -142,18 +174,16 @@ export function parentStationsTable(client: Database | ManageDatabase | Transact
   return new table({
     name: 'parent_stations',
     define: {
-      station_id: 'integer generated always as identity',
+      station_id: 'integer not null',
       station_name: 'varchar(255) not null',
       station_muni: 'integer',
       station_town: 'varchar(255)',
       station_geom: 'geometry(Point, 3857) not null',
-      station_bbox: 'geometry(Linestring, 3857) not null',
+      // station_bbox: 'geometry(Linestring, 3857) not null',
     },
     constraint: `
       primary key (station_id)
     `,
-    // query: `create index if not exists ix_parent_stations_station_id on parent_stations(feed_id, station_id);`,
-    // placeHolders: { station_bbox: (num: number): `ST_GeomFromText($${number}, 3857)` => `ST_GeomFromText($${num}, 3857)` },
   }, client);
 }
 
@@ -170,7 +200,7 @@ export function stopsTable(client: Database | ManageDatabase | Transaction) {
       zone_id: 'varchar(255)',
       stop_url: 'varchar(255)',
       location_type: 'ud_01',
-      station_id: ['ud', 'integer'],
+      station_id: 'integer',
       parent_station: 'varchar(255)',
       stop_timezone: 'varchar(15)',
       wheelchair_boarding: 'ud_02',
@@ -185,7 +215,7 @@ export function stopsTable(client: Database | ManageDatabase | Transaction) {
     query: `create index if not exists ix_stops_stop_id on stops(feed_id, stop_id);`,
     placeHolders: {
       stop_geom: (num: number): `ST_GeomFromText($${number}, 3857)` => `ST_GeomFromText($${num}, 3857)`,
-      station_id: (num1: number, num2: number): `ud_getStationID($${number}, ST_GeomFromText($${number}, 3857))` => `ud_getStationID($${num1}, ST_GeomFromText($${num2}, 3857))`,
+      // station_id: (num1: number, num2: number): `ud_getStationID($${number}, ST_GeomFromText($${number}, 3857))` => `ud_getStationID($${num1}, ST_GeomFromText($${num2}, 3857))`,
     },
   }, client);
 }
@@ -225,19 +255,20 @@ export function stopPatternsTable(client: Database | ManageDatabase | Transactio
       route_id: 'varchar(255) not null',
       stop_headsign: 'varchar(63)',
       direction_id: 'ud_01',
-      route_short_name: 'varchar(63)',
-      route_long_name: 'varchar(255)',
-      stop_id: 'varchar(255) not null',
-      stop_sequence: 'integer not null',
+      route_name: 'varchar(255) not null',
       station_id: 'integer not null',
+      next_station_id: 'integer',
+      stop_id: 'varchar(255) not null',
+      next_stop_id: 'varchar(255)',
+      stop_sequence: 'integer not null',
       stop_name: 'varchar(63) not null',
       platform_code: 'varchar(255)',
       zone_id: 'varchar(255)',
-      pattern_count: 'integer not null',
+      duration_time: 'integer',
     },
     constraint: `
-      primary key (feed_id, pattern_id, stop_sequence)
+      primary key (pattern_id, stop_sequence)
     `,
-    query: `create index if not exists ix_stop_patterns_pattern_id on stop_patterns(feed_id, pattern_id);`,
+    query: `create index if not exists ix_stop_patterns_stop_sequence on stop_patterns(pattern_id, stop_sequence);`,
   }, client);
 };

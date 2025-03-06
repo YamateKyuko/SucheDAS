@@ -17,8 +17,9 @@ function escaped(unsafe: string): string | null {
   return isEscapeNeeded(unsafe) ? unsafe : null;
 }
 
-export function getStrFromObj<K extends string[]>(obj: sthObj, ...args: K): {[U in K[number]]: string} | null {
+export function getStrFromObj<K extends string[]>(obj: sthObj | undefined, ...args: K): {[U in K[number]]: string} | null {
   const newObj = {} as sthObj;
+  if (!obj) return null;
   for (const arg of args) {
     const str = obj[arg];
     if (!isStr(str)) return null;

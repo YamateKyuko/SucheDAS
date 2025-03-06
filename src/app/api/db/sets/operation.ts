@@ -9,12 +9,12 @@ type MappedType<T extends typeDefObj> = {[K in keyof T]: Definer<T[K]>;};
       T extends `${string} not null` ? TypeNameToType<T> :
       T extends `${string} primary key` ? TypeNameToType<T> :
       T extends `${string} generated always as identity` ? TypeNameToType<T> :
-      T extends withTypeUD<notArr> ? unknown :
+      T extends freeInsertType<definedInsertType> ? unknown :
       null | TypeNameToType<T>;
     // type ReturnDefiner<T extends TypeNames> =
     //   T extends withTypeUD<infer A> ? Definer<A> :
     //   Definer<T>;
-  type TypeNames = notArr | withTypeUD<notArr>;
+  type TypeNames = definedInsertType | freeInsertType<definedInsertType>;
     type TypeNameToType<T extends TypeNames> =
       T extends varchar ? string :
       T extends integer ? number :
@@ -23,15 +23,17 @@ type MappedType<T extends typeDefObj> = {[K in keyof T]: Definer<T[K]>;};
       T extends userDefined ? string :
       T extends time ? string :
       never;
-    type notUD = varchar | integer | date | geometry | time;
+    type notUDtype = array | notArrayType;
+      type array = `${notArrayType}[]${` ${options}` | ''}`;
+    type notArrayType = varchar | integer | date | geometry | time;
       type varchar = `varchar(${number})${` ${options}` | ''}`;
       type integer = `integer${` ${options}` | ''}`;
       type date = `date${` ${options}` | ''}`;
       type geometry = `geometry(${'Point' | 'Linestring' | 'Polygon'}, 3857)${` ${options}` | ''}`;
       type time = `time${` ${options}` | ''}`;
-    type notArr = notUD | userDefined;
+    type definedInsertType = notUDtype | userDefined;
       type userDefined = `ud_${string}`;
-    type withTypeUD<T extends notArr> = ['ud', T];
+    type freeInsertType<T extends definedInsertType> = ['ud', T];
 
 // placeholders
 type MappedPh<T extends typeDefObj> = {[K in keyof T]?: TypeNameToPh<T[K]>;};
@@ -40,7 +42,7 @@ type MappedPh<T extends typeDefObj> = {[K in keyof T]?: TypeNameToPh<T[K]>;};
       T extends geometry ? gphf :
       T extends integer ? dphf | sphf :
       T extends userDefined ? phf :
-      T extends withTypeUD<notArr> ? phf :
+      T extends freeInsertType<definedInsertType> ? phf :
       dphf;
     type phf = (...num: number[]) => string;
     type dphf = (nums: number) => ph;
@@ -196,14 +198,14 @@ export class table<T extends typeDefObj> {
 
   // 管理用
   async create() {
-    const conv = (val: TypeNames | undefined): notArr => {
+    const conv = (val: TypeNames | undefined): definedInsertType => {
       if (!val) return 'varchar(0)';
       else if (isNotArr(val)) return val;
       else if (isWithTypeUD(val)) return val[1];
       return val;
     };
-    const isNotArr = (val: TypeNames): val is notArr => !isArr(val);
-    const isWithTypeUD = (val: TypeNames): val is withTypeUD<notArr> => val[0] == 'ud' && !!val[1];
+    const isNotArr = (val: TypeNames): val is definedInsertType => !isArr(val);
+    const isWithTypeUD = (val: TypeNames): val is freeInsertType<definedInsertType> => val[0] == 'ud' && !!val[1];
     const sql = `
       drop table if exists ${this.name} cascade;
       create table ${this.name} (

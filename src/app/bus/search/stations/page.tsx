@@ -1,17 +1,19 @@
 import React from 'react'
 import { Suspense } from 'react'
 import SearchBox from '@/app/bus/ui/searchBox'
-import { pageProps } from '@/app/bus/types';
+import { paramProps } from '@/app/bus/types';
 import StatonsTable from '@/app/bus/search/stations/stationsTable';
+import { getStrFromObj } from '@/app/lib/escape';
 // import { stationsTable } from '@/app/ui/bus/stationsTable';
 // import BusstopPoleTable from '@/app/ui/bus/busstopPole-table';
 // import { BusstopPole } from '@/app/class/classes';
 
 const paramName = 'station_name';
 
-export default async function Page(props: pageProps) {
-  const p = (await props.searchParams)[paramName];
-  const param = isStr(p) ? p : '';
+export default async function Page(props: paramProps) {
+  const p = getStrFromObj(await props.params, paramName);
+  if (!p) return <article><section><h1>パラメータを指定してください。</h1></section></article>;
+  const param = p[paramName];
   return (
     <article>
       <section>
@@ -26,4 +28,4 @@ export default async function Page(props: pageProps) {
   )
 };
 
-const isStr = (str: string | string[] | undefined | number): str is string => {return typeof str === 'string';};
+// const isStr = (str: string | string[] | undefined | number): str is string => {return typeof str === 'string';};

@@ -21,9 +21,9 @@ export default async function StopsTable(props: { param: number }) {
           <ul>
             {patterns.map((pattern, index) => (
               <li key={`${pattern.pattern_id}-${index}`}>
+                
                 <Pattern
-                  long={pattern.route_long_name}
-                  short={pattern.route_short_name}
+                  name={pattern.route_name}
                   headsign={pattern.stop_headsign}
                   pattern_id={pattern.pattern_id}
                 />
