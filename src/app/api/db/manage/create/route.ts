@@ -25,9 +25,8 @@ async function createDB() {
 }
 
 async function creater(client: Transaction) {
-  await client.run(`
-    grant select on all tables in schema public to reader;
-  `);
+
+
 
   await client.run(`
     drop function if exists ud_to_second(varchar(8));
@@ -76,6 +75,20 @@ async function creater(client: Transaction) {
     $$ language sql;
   `);
 
+  // 重要
+  // await client.run(`
+  //   DROP TYPE IF EXISTS public.ud_01;
+  //   CREATE TYPE public.ud_01 AS ENUM('0', '1');
+  //   DROP TYPE IF EXISTS public.ud_02;
+  //   CREATE TYPE public.ud_02 AS ENUM('0', '1', '2');
+  //   DROP TYPE IF EXISTS public.ud_03;
+  //   CREATE TYPE public.ud_03 AS ENUM('0', '1', '2', '3');
+  //   DROP TYPE IF EXISTS public.ud_route_type;
+  //   CREATE TYPE public.ud_route_type AS ENUM
+  //     ('0', '1', '2', '3', '4', '5', '6', '7');
+  // `);
+
+
   await feedTable(client).create();
   await agencyTable(client).create();
   await routesTable(client).create();
@@ -87,4 +100,8 @@ async function creater(client: Transaction) {
   await stopsTable(client).create();
   await stopTimesTable(client).create();
   await stopPatternsTable(client).create();
+
+  await client.run(`
+    grant select on all tables in schema public to reader;
+  `);
 };

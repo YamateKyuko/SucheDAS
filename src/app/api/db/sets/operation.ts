@@ -18,6 +18,8 @@ type MappedType<T extends typeDefObj> = {[K in keyof T]: Definer<T[K]>;};
     type TypeNameToType<T extends TypeNames> =
       T extends varchar ? string :
       T extends integer ? number :
+      T extends smallint ? number :
+      T extends doublePrecision ? number :
       T extends date ? Date | string :
       T extends geometry ? `Point(${number} ${number})` :
       T extends userDefined ? string :
@@ -25,12 +27,14 @@ type MappedType<T extends typeDefObj> = {[K in keyof T]: Definer<T[K]>;};
       never;
     type notUDtype = array | notArrayType;
       type array = `${notArrayType}[]${` ${options}` | ''}`;
-    type notArrayType = varchar | integer | date | geometry | time;
+    type notArrayType = varchar | integer | smallint | date | geometry | time | doublePrecision;
       type varchar = `varchar(${number})${` ${options}` | ''}`;
       type integer = `integer${` ${options}` | ''}`;
+      type smallint = `smallint${` ${options}` | ''}`;
       type date = `date${` ${options}` | ''}`;
       type geometry = `geometry(${'Point' | 'Linestring' | 'Polygon'}, 3857)${` ${options}` | ''}`;
       type time = `time${` ${options}` | ''}`;
+      type doublePrecision = `double precision${` ${options}` | ''}`;
     type definedInsertType = notUDtype | userDefined;
       type userDefined = `ud_${string}`;
     type freeInsertType<T extends definedInsertType> = ['ud', T];
@@ -40,13 +44,14 @@ type MappedPh<T extends typeDefObj> = {[K in keyof T]?: TypeNameToPh<T[K]>;};
   type ph = `$${number}`;
     type TypeNameToPh<T extends TypeNames> =
       T extends geometry ? gphf :
-      T extends integer ? dphf | sphf :
+      T extends integer ? dphf | sphf | tphf :
       T extends userDefined ? phf :
       T extends freeInsertType<definedInsertType> ? phf :
       dphf;
     type phf = (...num: number[]) => string;
     type dphf = (nums: number) => ph;
     type gphf = (nums: number) => `ST_GeomFromText(${ph}, 3857)`;
+    type tphf = (nums: number) => `ud_to_second(${ph})`;
     type sphf = () => `default`;
 
 // selectKeys

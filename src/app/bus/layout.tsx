@@ -46,7 +46,7 @@ export default function Layout({children}: {children: React.ReactNode}) {
           以下のメールアドレスにお願いします。<br />
         </p>
         <p>
-          <a href="mailto:y0896406@gmail.com">y0896406@gmail.com</a>
+          <a href="mailto:Yamate.kyuko@gmail.com">Yamate.kyuko@gmail.com</a>
         </p>
         
       </footer>

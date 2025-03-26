@@ -34,10 +34,9 @@ export class gtfsReader {
   constructor(directory: unzipper.CentralDirectory) {
     this.directory = directory;
   }
-  static async init(url: string): Promise<gtfsReader | null> {
+  static async init(url: string, date: string): Promise<gtfsReader | null> {
     try {
-      // console.log(url);
-      const response = await axios.get(url, {params: {'acl:consumerKey': acl_consumerKey()}, responseType: 'arraybuffer'});
+      const response = await axios.get(url, {params: {'acl:consumerKey': acl_consumerKey(), date: date}, responseType: 'arraybuffer'});
       
       const buffer = Buffer.from(response.data);
       const directory = await unzipper.Open.buffer(buffer);

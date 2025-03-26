@@ -16,7 +16,10 @@ export default async function Page(props: paramProps) {
   const p = getStrFromObj(await props.params, 'prov');
   if (!p) return <article><section><h1>パラメータを指定してください。</h1></section></article>;
   const prov = p['prov'] as getRTvehiclePositionRequestProvider;
-  if (!vehiclePositionProviderList.includes(prov)) return <article><section><h1>指定されたデータは存在しません。</h1></section></article>;
+
+
+  // console.log(vehiclePositionProviderList);
+  if (!vehiclePositionProviderList.map((v) => v.toLocaleLowerCase()).includes(prov)) return <article><section><h1>指定されたデータは存在しません。</h1></section></article>;
 
   // const sp = getStrFromObj(await props.searchParams, 'vehicle_id');
   // const vehicle_id = sp?.['vehicle_id'];

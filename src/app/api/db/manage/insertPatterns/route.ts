@@ -130,11 +130,9 @@ insert into stop_patterns (
 	agency_id,
 	route_type,
 	route_id,
-	direction_id,
 	stop_headsign,
+	direction_id,
 	route_name,
-	-- station_id,
-	-- next_station_id,
 	stop_id,
 	next_stop_id,
 	stop_sequence,
@@ -167,17 +165,16 @@ with leaded as (
 	from stop_times as tim
 	-- inner join stops as stp using(feed_id, stop_id)
 )
+
 select
 	tim.feed_id,
 	tpt.pattern_id,
 	tpt.agency_id,
 	tpt.route_type,
 	tpt.route_id,
-	tpt.direction_id,
 	tim.stop_headsign,
+	tpt.direction_id,
 	tpt.route_name,
-	-- tim.station_id,
-	-- tim.next_station_id,
 	tim.stop_id,
 	tim.next_stop_id,
 	tim.stop_sequence,
@@ -205,8 +202,6 @@ group by
 	tpt.direction_id,
 	tim.stop_headsign,
 	tpt.route_name,
-	-- tim.station_id,
-	-- tim.next_station_id,
 	tim.stop_id,
 	tim.next_stop_id,
 	tim.stop_sequence,
@@ -220,6 +215,7 @@ order by
 `;
 
 const next_stop_list = `
+drop table if exists next_stop_list;
 create table next_stop_list as 
 with stop_pair as (
 	select 

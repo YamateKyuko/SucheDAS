@@ -21,11 +21,10 @@ async function insertGTFS(params: queryParam): Promise<NextResponse> {
   try {
     const db = await ManageDatabase.init();
     
-    const { url: feedUrl } = params;
+    const { url: feedUrl, date = '' } = params;
     if (!feedUrl) return missingError('feedUrl');
-    // if (!date) return missingError('date');
 
-    const reader = await gtfsReader.init(feedUrl);
+    const reader = await gtfsReader.init(feedUrl, date);
 
     if (!reader) return missingError('reader');
 
@@ -193,7 +192,7 @@ async function routes(client: Transaction, files: temp_fileData[], feedId: numbe
       route_short_name: Str(route.route_short_name),
       route_long_name: Str(route.route_long_name),
       route_desc: Str(route.route_desc),
-      route_type: Str(route.route_type),
+      route_type: Num(route.route_type),
       route_url: Str(route.route_url),
       route_color: Str(route.route_color),
       route_text_color: Str(route.route_text_color),
@@ -286,11 +285,11 @@ async function trips (client: Transaction, files: temp_fileData[], feedId: numbe
       trip_id: toStr(trip.trip_id, a),
       trip_headsign: Str(trip.trip_headsign),
       trip_short_name: Str(trip.trip_short_name),
-      direction_id: Str(trip.direction_id),
+      direction_id: Num(trip.direction_id),
       block_id: Str(trip.block_id),
       shape_id: Str(trip.shape_id),
-      wheelchair_accessible: Str(trip.wheelchair_accessible),
-      bikes_allowed: Str(trip.bikes_allowed),
+      wheelchair_accessible: Num(trip.wheelchair_accessible),
+      bikes_allowed: Num(trip.bikes_allowed),
       jp_trip_desc: Str(trip.jp_trip_desc),
       jp_trip_desc_symbol: Str(trip.jp_trip_desc_symbol),
       jp_office_id: Str(trip.jp_office_id),
@@ -318,15 +317,17 @@ async function stops(client: Transaction, files: temp_fileData[], feedId: number
       stop_code: Str(stop.stop_code),
       stop_name: toStr(stop.stop_name, a),
       stop_desc: Str(stop.stop_desc),
-      stop_geom: `Point(${toNum(stop.stop_lon, a)} ${toNum(stop.stop_lat, a)})`,
+      stop_lat: toNum(stop.stop_lat, a),
+      stop_lon: toNum(stop.stop_lon, a),
+      // stop_geom: `Point(${toNum(stop.stop_lon, a)} ${toNum(stop.stop_lat, a)})`,
       zone_id: Str(stop.zone_id),
       stop_url: Str(stop.stop_url),
-      location_type: Str(stop.location_type),
+      location_type: Num(stop.location_type),
       station_id: null,
       // station_id: [toStr(stop.stop_name, a), `Point(${toNum(stop.stop_lon, a)} ${toNum(stop.stop_lat, a)})`],
       parent_station: Str(stop.parent_station),
       stop_timezone: Str(stop.stop_timezone),
-      wheelchair_boarding: Str(stop.wheelchair_boarding),
+      wheelchair_boarding: Num(stop.wheelchair_boarding),
       platform_code: Str(stop.platform_code),
     };
     
@@ -352,16 +353,14 @@ async function stop_times(client: Transaction, files: temp_fileData[], feedId: n
       stop_id: toStr(stopTime.stop_id, a),
       stop_sequence: toNum(stopTime.stop_sequence, a),
       stop_headsign: Str(stopTime.stop_headsign),
-      pickup_type: Str(stopTime.pickup_type),
-      drop_off_type: Str(stopTime.drop_off_type),
+      pickup_type: Num(stopTime.pickup_type),
+      drop_off_type: Num(stopTime.drop_off_type),
       shape_dist_traveled: Str(stopTime.shape_dist_traveled),
     };
     if (able) {await tbl.insert(insertData)}
     else console.log('--> Error: required data is missing.');
   };
 };
-
-
 
 const toStr = (v: string | undefined, a: () => void): string => {
   if (v) return v;

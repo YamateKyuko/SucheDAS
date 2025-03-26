@@ -5,15 +5,17 @@ import { providerList } from '@/app/api/common/RTproviderList';
 
 export async function getRT(provObj: typeof providerList[keyof typeof providerList]): Promise<getRTvehicleResponseEntity[] | null> {
   try {
-    const response = await axios.get(
-      provObj.VPendpoint,
-      {
-        params: {'acl:consumerKey': process.env.ACL || ''},
-        responseType: 'arraybuffer'
-      },
-    );
+    const response = await fetch(provObj.VPendpoint + `?acl:consumerKey=${process.env.ACL || ''}`);
+    // const response = await axios.get(
+    //   provObj.VPendpoint,
+    //   {
+    //     params: {'acl:consumerKey': process.env.ACL || ''},
+    //     responseType: 'arraybuffer'
+    //   },
+    // );
     if (!response) return null;
-    const buffer = response.data;
+    // const buffer = response.data;
+    const buffer = await response.arrayBuffer();
     const message = gtfsRealtime.FeedMessage.deserializeBinary(new Uint8Array(buffer));
     const object = message.toObject();
 
