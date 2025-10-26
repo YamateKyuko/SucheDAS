@@ -219,13 +219,15 @@ export class table<T extends typeDefObj> {
       );
       ${this.tableQuery || ''}
     `;
-    console.log(sql)
     await this.run(sql);
   };
   async insert(data: MappedType<T>) {
     const sql = `
       insert into ${this.name} (${this.joinedKeys}) values (${this.joinedPlaceHolders}) on conflict do nothing;
     `;
+    // const sql = `
+    //   insert into ${this.name} (${this.joinedKeys}) values (${this.keys.map(k => data[k]).flat().join(', ')}) on conflict do nothing;
+    // `
     await this.run(sql, [...this.keys.map(k => data[k]).flat()]);
   };
   async returningInsert<K extends readonly selectKey<T>[]>(data: MappedType<T>, returningKeys: K, query?: string) {

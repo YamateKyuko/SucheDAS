@@ -24,6 +24,43 @@ async function insertPatterns(): Promise<NextResponse> {
   };
 };
 
+const next_stop_list = `
+drop table if exists next_stop_list;
+create table next_stop_list as 
+with stop_pair as (
+	select 
+		feed_id,
+		least(stop_id, next_stop_id) as stop_id,
+		greatest(stop_id, next_stop_id) as next_stop_id
+	from stop_patterns
+	where next_stop_id is not null
+	group by 1, 2, 3
+),
+stop_list as (
+	select 
+		feed_id,
+		stop_id,
+		array_agg(next_stop_id) as stop_list
+	from stop_pair
+	group by feed_id, stop_id
+),
+next_stop_list as (
+	select 
+		feed_id,
+		next_stop_id as stop_id,
+		array_agg(stop_id) as stop_list
+	from stop_pair
+	group by feed_id, next_stop_id
+)
+select 
+	feed_id,
+	stop_id,
+	stop_list.stop_list || next_stop_list.stop_list as list
+from stop_list
+inner join next_stop_list using(feed_id, stop_id)
+;
+`;
+
 const trip_patterns_insert = `
 with trip_stop_list as (
 	select
@@ -98,9 +135,7 @@ joined as (
 		lis.route_type,
 		lis.route_id,
 		lis.direction_id,
-		rot.route_name,
-		lis.stop_list,
-		lis.headsign_list
+		rot.route_name
 	from grouped as lis
 	inner join routes as rot
 		using (feed_id, route_id)
@@ -112,9 +147,7 @@ insert into trip_patterns (
 	route_type,
 	route_id,
 	direction_id,
-	route_name,
-	stop_list,
-	headsign_list
+	route_name
 )
 select
 	*
@@ -153,9 +186,6 @@ with leaded as (
 				tim.stop_sequence
 		) as stop_sequence,
 		tim.stop_headsign,
-		-- stp.station_id,
-		-- lead(stp.station_id, 1, null)
-			-- over(partition by tim.feed_id, tim.trip_id order by tim.stop_sequence) as next_station_id,
 		tim.stop_id,
 		lead(tim.stop_id, 1, null)
 			over(partition by tim.feed_id, tim.trip_id order by tim.stop_sequence) as next_stop_id,
@@ -163,7 +193,6 @@ with leaded as (
 		lead(tim.arrival_time, 1, null)
 			over(partition by tim.feed_id, tim.trip_id order by tim.stop_sequence) as next_arrival_time
 	from stop_times as tim
-	-- inner join stops as stp using(feed_id, stop_id)
 )
 
 select
@@ -183,8 +212,8 @@ select
 	stp.zone_id,
 	percentile_cont(0.5) within group (
 		order by (
-			ud_to_second(tim.next_arrival_time) -
-			ud_to_second(tim.departure_time)
+			tim.next_arrival_time -
+			tim.departure_time
 		)) as duration_time
 from leaded as tim
 inner join trips as trp
@@ -214,44 +243,10 @@ order by
 ;
 `;
 
-const next_stop_list = `
-drop table if exists next_stop_list;
-create table next_stop_list as 
-with stop_pair as (
-	select 
-		feed_id,
-		least(stop_id, next_stop_id) as stop_id,
-		greatest(stop_id, next_stop_id) as next_stop_id
-	from stop_patterns
-	where next_stop_id is not null
-	group by 1, 2, 3
-),
-stop_list as (
-	select 
-		feed_id,
-		stop_id,
-		array_agg(next_stop_id) as stop_list
-	from stop_pair
-	group by feed_id, stop_id
-),
-next_stop_list as (
-	select 
-		feed_id,
-		next_stop_id as stop_id,
-		array_agg(stop_id) as stop_list
-	from stop_pair
-	group by feed_id, next_stop_id
-)
-select 
-	feed_id,
-	stop_id,
-	stop_list.stop_list || next_stop_list.stop_list as list
-from stop_list
-inner join next_stop_list using(feed_id, stop_id)
-;
-`;
-
 const parent_stations_insert = `
+create extension postgis;
+
+
 drop table if exists temps;
 create table temps (
 	feed_id integer not null,
@@ -263,7 +258,7 @@ create table temps (
 );
 
 insert into temps
-	select feed_id, stop_id, stop_name, stop_geom, false, null
+	select feed_id, stop_id, stop_name, st_point(stop_lon, stop_lat) as stop_geom, false, null
 		from stops
 		order by stop_id;
 
@@ -361,13 +356,15 @@ insert
 	into parent_stations(
 		station_id,
 		station_name,
-		station_geom
+		station_lat,
+		station_lon
 	)
 	select
 		distinct on (station_id)
 		station_id,
 		stop_name as station_name,
-		st_centroid(st_collect(stop_geom) over(partition by station_id))
+		st_y(st_centroid(st_collect(stop_geom) over(partition by station_id))),
+		st_x(st_centroid(st_collect(stop_geom) over(partition by station_id)))
 	from temps;
 
 drop table if exists temps cascade;
@@ -375,4 +372,7 @@ drop table if exists to_process cascade;
 
 
 drop table if exists next_stop_list;
+
+
+drop extension postgis;
 `;

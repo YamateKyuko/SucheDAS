@@ -85,11 +85,17 @@ export class ManageDatabase extends Database {
 export class Transaction {
   mode = 'transaction';
   client: PoolClient;
+
+  queryStore: string = "";
+
   constructor(client: PoolClient) {
     this.client = client;
   }
   async run(query: string, params?: unknown[]) {
     return (await this.client.query(query, params));
+    // this.queryStore = this.queryStore + query;
+    // return;
+    // console.log(params);
   }
   async release() {}
   async query() {}

@@ -11,7 +11,7 @@ type temp_fileData = {
 interface ParsedData {
   [key: string]: string | undefined;
 }
-// const needfiles: ([string] | [string, string])[] = [['translations']];
+// const needfiles: ([string] | [string, string])[] = [['agency', 'agency_jp'], ['routes']];
 const needfiles: ([string] | [string, string])[] = [['agency', 'agency_jp'], ['routes'], ['calendar', 'calendar_dates'], ['trips'], ['stops'], ['stop_times']];
 export async function GET(request: Request) {
   return authenticate(request, insertGTFS);
@@ -21,18 +21,22 @@ async function insertGTFS(params: queryParam): Promise<NextResponse> {
   try {
     const db = await ManageDatabase.init();
     
-    const { url: feedUrl, date = '' } = params;
+    const { url: feedUrl, date = '', feed_id: feedId } = params;
     if (!feedUrl) return missingError('feedUrl');
+    if (!feedId) return missingError('feedId');
 
     const reader = await gtfsReader.init(feedUrl, date);
 
     if (!reader) return missingError('reader');
 
-    await db.Transaction(inserter, feedUrl, reader)
+    const str = await db.Transaction(inserter, feedUrl, reader, Number(feedId));
+    console.log(str);
+
+    return NextResponse.json(str);
 
     // console.log('Loading: release');
     console.log('Loading: done');
-    return NextResponse.json({ insertGTFS: 'inserted' });
+    // return NextResponse.json({ insertGTFS: 'inserted' });
   } catch (error) {
     console.log(error);
     return NextResponse.json(
@@ -42,12 +46,13 @@ async function insertGTFS(params: queryParam): Promise<NextResponse> {
   };
 };
 
-async function inserter(transaction: Transaction, feedUrl: string, reader: gtfsReader) {
+async function inserter(transaction: Transaction, feedUrl: string, reader: gtfsReader, feedId: number) {
 
 
   const feedData = await getFileData(reader, ['feed_info']);
-  const feedId = await feed(transaction, feedData, feedUrl)
-  if (!feedId) return missingError('feedId');
+  // const feedId = 
+  await feed(transaction, feedData, feedUrl, feedId);
+  // if (!feedId) return missingError('feedId');
 
 
   for (const fileNames of needfiles) {
@@ -82,7 +87,8 @@ async function inserter(transaction: Transaction, feedUrl: string, reader: gtfsR
   };
   // console.log('Loading: release');
   // console.log('Loading: done');
-  return NextResponse.json({ insertGTFS: 'inserted' });
+  return transaction.queryStore;
+  // return NextResponse.json({ insertGTFS: 'inserted' });
 }
 
 async function getFileData(reader: gtfsReader, fileName: [string] | [string, string]): Promise<temp_fileData[]> {
@@ -110,7 +116,7 @@ async function getFileData(reader: gtfsReader, fileName: [string] | [string, str
 //   };
 // };
 
-async function feed(client: Transaction, files: temp_fileData[], feedUrl: string): Promise<number | undefined> {
+async function feed(client: Transaction, files: temp_fileData[], feedUrl: string, feed_id: number): Promise<number | undefined> {
   const tbl = feedTable(client);
   const feedValue = files[0]?.value[0];
   if (!feedValue) return undefined;
@@ -120,23 +126,24 @@ async function feed(client: Transaction, files: temp_fileData[], feedUrl: string
   let able = true;
   const a = () => able = false;
   const insertData: NeededParams<typeof tbl['insert']> = {
-    feed_id: 0, // dummy
-    feed_import: new Date(),
+    feed_id: feed_id, // dummy
+    feed_import: new Date().toLocaleDateString("ja-JP", {year: "numeric", month: "2-digit", day: "2-digit"}).replaceAll('/', '-'),
     feed_url: feedUrl,
     feed_publisher_name: toStr(feedValue.feed_publisher_name, a),
     feed_publisher_url: toStr(feedValue.feed_publisher_url, a),
     feed_lang: toStr(feedValue.feed_lang, a),
-    feed_start_date: Iso(feedValue.feed_start_date),
-    feed_end_date: Iso(feedValue.feed_end_date),
+    // feed_start_date: Iso(feedValue.feed_start_date),
+    // feed_end_date: Iso(feedValue.feed_end_date),
     feed_version: Str(feedValue.feed_version),
   };
   // const insertQuery = `returning feed_id`;
   if (able) {
-    const res = await tbl.returningInsert(insertData, ['feed_id'], 'overriding user value');
-    if (!res) return undefined;
-    const feed_id = res.feed_id;
-    if (isNum(feed_id)) return feed_id;
-    else return undefined;
+    await tbl.insert(insertData);
+    // const res = await tbl.returningInsert(insertData, ['feed_id'], 'overriding user value');
+    // if (!res) return undefined;
+    // const feed_id = res.feed_id;
+    // if (isNum(feed_id)) return feed_id;
+    // else return undefined;
   }
   else console.log('--> Error: required data is missing.'); return undefined;
 }
@@ -181,7 +188,7 @@ async function routes(client: Transaction, files: temp_fileData[], feedId: numbe
   console.log('Loading: routes');
   for (const route of routesValue) {
     const route_name = route.route_short_name || route.route_long_name || route.route_id || '';
-    console.log('  : ' + route.route_name);
+    console.log('  : ' + route_name);
     let able = true;
     const a = () => able = false;
     const insertData: NeededParams<typeof tbl['insert']> = {
@@ -348,8 +355,8 @@ async function stop_times(client: Transaction, files: temp_fileData[], feedId: n
     const insertData: NeededParams<typeof tbl['insert']> = {
       feed_id: feedId,
       trip_id: toStr(stopTime.trip_id, a),
-      arrival_time: toStr(stopTime.arrival_time, a),
-      departure_time: toStr(stopTime.departure_time, a),
+      arrival_time: toTime(stopTime.arrival_time, a),
+      departure_time: toTime(stopTime.departure_time, a),
       stop_id: toStr(stopTime.stop_id, a),
       stop_sequence: toNum(stopTime.stop_sequence, a),
       stop_headsign: Str(stopTime.stop_headsign),
@@ -392,15 +399,17 @@ const Iso = (v: string | undefined): string | null => {
   return (v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6, 8));
 };
 
-// const toTime = (v: string | undefined, a: () => void): number => {
-//   if (!v) {a(); return 0;};
-//   return (Number(v.slice(0, 1)) * 3600 + Number(v.slice(3, 4)) * 60 + Number(v.slice(6, 7)) || 0);
-// };
+const toTime = (v: string | undefined, a: () => void) => {
+  if (!v) {a(); return 0;};
+  
+  return (Number(v.slice(0, 2)) * 3600 + Number(v.slice(3, 5)) * 60 + Number(v.slice(6, 8)) || 0);
+};
 
-const isNum = (v: unknown): v is number => typeof v === 'number';
+// const isNum = (v: unknown): v is number => typeof v === 'number';
 
 
 const missingError = (v: string): NextResponse => {
   console.log(`--> Error: ${v} is missing.`);
   return NextResponse.json({ insertGTFS: 'error' }, { status: 500 });
 };
+

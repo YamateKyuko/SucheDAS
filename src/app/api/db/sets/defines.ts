@@ -5,14 +5,15 @@ export function feedTable(client: Database | ManageDatabase | Transaction) {
   return new table({
     name: 'feed',
     define: {
-      feed_id: 'integer generated always as identity',
+      feed_id: 'integer not null',
       feed_url: 'varchar(255) not null',
-      feed_import: 'date not null',
+      feed_import: 'varchar(10) not null',
+      // feed_import: 'date not null',
       feed_publisher_name: 'varchar(255) not null',
       feed_publisher_url: 'varchar(255) not null',
       feed_lang: 'varchar(15) not null',
-      feed_start_date: 'date',
-      feed_end_date: 'date',
+      // feed_start_date: 'date',
+      // feed_end_date: 'date',
       feed_version: 'varchar(63)',
     },
     constraint: `
@@ -61,7 +62,7 @@ export function routesTable(client: Database | ManageDatabase | Transaction) {
       route_short_name: 'varchar(63)',
       route_long_name: 'varchar(255)',
       route_desc: 'varchar(255)',
-      route_type: 'integer check (route_type in (0, 1, 2, 3, 4, 5, 6, 7, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109))',
+      route_type: 'integer check (route_type in (0, 1, 2, 3, 4, 5, 6, 7))',
       route_url: 'varchar(255)',
       route_color: 'varchar(6)',
       route_text_color: 'varchar(6)',
@@ -108,7 +109,8 @@ export function calendarTable(client: Database | ManageDatabase | Transaction) {
     define: {
       feed_id: 'smallint not null',
       service_id: 'varchar(63) not null',
-      date: 'date not null',
+      date: 'varchar(10) not null',
+      // date: 'date not null',
     },
     constraint: `
       primary key (feed_id, service_id, date),
@@ -129,13 +131,13 @@ export function tripPatternsTable(client: Database | ManageDatabase | Transactio
       agency_id: 'varchar(63)',
       direction_id: 'integer check (direction_id in (0, 1))',
       route_name: 'varchar(255) not null',
-      stop_list: 'varchar(255)[]',
-      headsign_list: 'varchar(255)[]',
+      // stop_list: 'varchar(255)[]',
+      // headsign_list: 'varchar(255)[]',
     },
     constraint: `
-      primary key (feed_id, pattern_id)
+      primary key (pattern_id)
     `,
-    query: `create index if not exists ix_trip_patterns_pattern_id on trips(feed_id, pattern_id);`,
+    query: `create index if not exists ix_trip_patterns_pattern_id on trip_patterns(pattern_id);`,
   }, client);
 };
 
@@ -185,6 +187,7 @@ export function parentStationsTable(client: Database | ManageDatabase | Transact
     constraint: `
       primary key (station_id)
     `,
+    query: `create index if not exists ix_parent_stations_station_id on parent_stations(station_id);`,
   }, client);
 }
 
@@ -229,10 +232,10 @@ export function stopTimesTable(client: Database | ManageDatabase | Transaction) 
     define: {
       feed_id: 'smallint not null',
       trip_id: 'varchar(63)',
-      // arrival_time: 'integer not null',
-      // departure_time: 'integer not null',
-      arrival_time: 'varchar(8) not null',
-      departure_time: 'varchar(8) not null',
+      arrival_time: 'integer not null',
+      departure_time: 'integer not null',
+      // arrival_time: 'varchar(8) not null',
+      // departure_time: 'varchar(8) not null',
       stop_id: 'varchar(63) not null',
       stop_sequence: 'integer',
 

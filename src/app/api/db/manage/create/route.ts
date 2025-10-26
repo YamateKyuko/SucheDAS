@@ -11,10 +11,11 @@ export async function GET(request: Request) {
 async function createDB() {
   try {
     const db = await ManageDatabase.init();
-    await db.Transaction(creater);
-    return NextResponse.json(
-      { createDB: 'created' },
-    );
+    const str = await db.Transaction(creater);
+    return NextResponse.json(str);
+    // return NextResponse.json(
+    //   { createDB: 'created' },
+    // );
   } catch (error) {
     console.log(error);
     return NextResponse.json(
@@ -104,4 +105,6 @@ async function creater(client: Transaction) {
   await client.run(`
     grant select on all tables in schema public to reader;
   `);
+
+  return client.queryStore;
 };
